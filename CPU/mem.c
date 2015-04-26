@@ -37,6 +37,7 @@
 #include "inst.h"
 #include "reg.h"
 #include "mem.h"
+#include <stdio.h>
 
 /* Exported Variables: */
 
@@ -70,6 +71,12 @@ BYTE_TYPE *k_data_seg_b;
 mem_addr k_data_top;
 
 
+char * curr_inst = "No Instruction";
+extern bool started;
+extern bool inst_debug;
+extern bool i_trace;
+extern bool a_trace;
+unsigned char a_count;
 /* Local functions: */
 
 static mem_word bad_mem_read (mem_addr addr, int mask);
@@ -292,6 +299,24 @@ expand_k_data (int addl_bytes)
 
 
 
+void
+write_memory_read(mem_addr addr, const char * filename)
+{
+	if(a_count < 2){
+		a_count+=1;
+		if(a_count == 2)
+			remove("Atrace.txt");
+	}
+	if(started){
+		FILE *fp;
+		fp=fopen(filename, "a+");
+		if(inst_debug)
+			fprintf(fp,"curr_inst:%s\n",curr_inst);
+		fprintf(fp,"r_%.8X\n",addr);
+		fclose(fp);
+	}
+}
+
 /* Access memory */
 
 void*
@@ -315,23 +340,64 @@ mem_reference(mem_addr addr)
 }
 
 
+void
+write_inst_read(char* inst_line, const char * filename)
+{
+	if(started){
+		FILE *fp;
+		fp=fopen(filename, "a+");
+		fprintf(fp,inst_line);
+		fprintf(fp,"\n");
+		fclose(fp);
+	}	
+}
+
 instruction*
 read_mem_inst(mem_addr addr)
 {
-  if ((addr >= TEXT_BOT) && (addr < text_top) && !(addr & 0x3))
-    return text_seg [(addr - TEXT_BOT) >> 2];
-  else if ((addr >= K_TEXT_BOT) && (addr < k_text_top) && !(addr & 0x3))
-    return k_text_seg [(addr - K_TEXT_BOT) >> 2];
+  if ((addr >= TEXT_BOT) && (addr < text_top) && !(addr & 0x3)){
+	if(started && text_seg [(addr - TEXT_BOT) >> 2]->source_line != NULL && i_trace){
+		if(inst_debug)
+			curr_inst = text_seg [(addr - TEXT_BOT) >> 2]->source_line;
+		write_inst_read(text_seg [(addr - TEXT_BOT) >> 2]->source_line,"Itrace.txt");
+	}	
+	return text_seg [(addr - TEXT_BOT) >> 2];
+  }
+  else if ((addr >= K_TEXT_BOT) && (addr < k_text_top) && !(addr & 0x3)){
+    if(started)
+		write_inst_read(text_seg [(addr - K_TEXT_BOT) >> 2]->source_line,"Itrace.txt");
+	return k_text_seg [(addr - K_TEXT_BOT) >> 2];
+  }
   else
     return bad_text_read (addr);
 }
 
 
+void
+write_memory_write(mem_addr addr, const char * filename)
+{
+	if(a_count < 2){
+		a_count+=1;
+		if(a_count == 2)
+			remove("Atrace.txt");
+	}
+	if(started){
+		FILE *fp;
+		fp=fopen(filename, "a+");
+		if(inst_debug)
+			fprintf(fp,"curr_inst:%s\n",curr_inst);
+		fprintf(fp,"w_%.8X\n",addr);
+		fclose(fp);
+	}	
+}
+
 reg_word
 read_mem_byte(mem_addr addr)
 {
+  if(started && a_trace)
+	write_memory_read(addr, "Atrace.txt");	
   if ((addr >= DATA_BOT) && (addr < data_top))
-    return data_seg_b [addr - DATA_BOT];
+	return data_seg_b [addr - DATA_BOT];
   else if ((addr >= stack_bot) && (addr < STACK_TOP))
     return stack_seg_b [addr - stack_bot];
   else if ((addr >= K_DATA_BOT) && (addr < k_data_top))
@@ -344,8 +410,10 @@ read_mem_byte(mem_addr addr)
 reg_word
 read_mem_half(mem_addr addr)
 {
+  if(started&& a_trace)
+	write_memory_read(addr, "Atrace.txt");	
   if ((addr >= DATA_BOT) && (addr < data_top) && !(addr & 0x1))
-    return data_seg_h [(addr - DATA_BOT) >> 1];
+	return data_seg_h [(addr - DATA_BOT) >> 1];
   else if ((addr >= stack_bot) && (addr < STACK_TOP) && !(addr & 0x1))
     return stack_seg_h [(addr - stack_bot) >> 1];
   else if ((addr >= K_DATA_BOT) && (addr < k_data_top) && !(addr & 0x1))
@@ -358,8 +426,10 @@ read_mem_half(mem_addr addr)
 reg_word
 read_mem_word(mem_addr addr)
 {
+  if(started&& a_trace)
+	write_memory_read(addr, "Atrace.txt");	
   if ((addr >= DATA_BOT) && (addr < data_top) && !(addr & 0x3))
-    return data_seg [(addr - DATA_BOT) >> 2];
+	return data_seg [(addr - DATA_BOT) >> 2];
   else if ((addr >= stack_bot) && (addr < STACK_TOP) && !(addr & 0x3))
     return stack_seg [(addr - stack_bot) >> 2];
   else if ((addr >= K_DATA_BOT) && (addr < k_data_top) && !(addr & 0x3))
@@ -386,8 +456,10 @@ void
 set_mem_byte(mem_addr addr, reg_word value)
 {
   data_modified = true;
+  if(started&& a_trace)
+	write_memory_write(addr, "Atrace.txt");
   if ((addr >= DATA_BOT) && (addr < data_top))
-    data_seg_b [addr - DATA_BOT] = (BYTE_TYPE) value;
+	data_seg_b [addr - DATA_BOT] = (BYTE_TYPE) value;
   else if ((addr >= stack_bot) && (addr < STACK_TOP))
     stack_seg_b [addr - stack_bot] = (BYTE_TYPE) value;
   else if ((addr >= K_DATA_BOT) && (addr < k_data_top))
@@ -401,6 +473,8 @@ void
 set_mem_half(mem_addr addr, reg_word value)
 {
   data_modified = true;
+  if(started&& a_trace)
+	write_memory_write(addr, "Atrace.txt");
   if ((addr >= DATA_BOT) && (addr < data_top) && !(addr & 0x1))
     data_seg_h [(addr - DATA_BOT) >> 1] = (short) value;
   else if ((addr >= stack_bot) && (addr < STACK_TOP) && !(addr & 0x1))
@@ -416,8 +490,10 @@ void
 set_mem_word(mem_addr addr, reg_word value)
 {
   data_modified = true;
+  if(started&& a_trace)
+	write_memory_write(addr, "Atrace.txt");
   if ((addr >= DATA_BOT) && (addr < data_top) && !(addr & 0x3))
-    data_seg [(addr - DATA_BOT) >> 2] = (mem_word) value;
+	data_seg [(addr - DATA_BOT) >> 2] = (mem_word) value;
   else if ((addr >= stack_bot) && (addr < STACK_TOP) && !(addr & 0x3))
     stack_seg [(addr - stack_bot) >> 2] = (mem_word) value;
   else if ((addr >= K_DATA_BOT) && (addr < k_data_top) && !(addr & 0x3))

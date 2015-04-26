@@ -119,7 +119,10 @@ bool mapped_io;			/* => activate memory-mapped IO */
 int pipe_out;
 int spim_return_value;		/* Value returned when spim exits */
 
-
+bool started = 0;
+bool i_trace = 0;
+bool a_trace = 0;
+bool inst_debug = 0;
 /* Local variables: */
 
 /* => load standard exception handler */
@@ -140,6 +143,12 @@ static bool dump_all_segments = false;
 int
 main (int argc, char **argv)
 {
+
+    // CLEAR STARTING FILE
+  remove("Atrace.txt"); 
+  remove("Itrace.txt");  
+  remove("hard_i_trace.txt");   
+  
   int i;
   bool assembly_file_loaded = false;
   int print_usage_msg = 0;
@@ -160,7 +169,7 @@ main (int argc, char **argv)
   mapped_io = false;
 
   // write_startup_message ();
-
+	
   if (getenv ("SPIM_EXCEPTION_HANDLER") != NULL)
     exception_file_name = getenv ("SPIM_EXCEPTION_HANDLER");
 
@@ -399,6 +408,9 @@ enum {
   UNKNOWN_CMD = 0,
   EXIT_CMD,
   READ_CMD,
+  INST_DEBUG,
+  INST_TRACE,
+  ADDR_TRACE,
   RUN_CMD,
   STEP_CMD,
   PRINT_CMD,
@@ -435,7 +447,24 @@ parse_spim_command (bool redo)
     case EXIT_CMD:
       console_to_spim ();
       exit (0);
-
+	case INST_TRACE:
+		if (!redo) flush_to_newline ();
+		i_trace = i_trace^1;
+		prev_cmd = INST_TRACE;
+		printf("Inst_Trace is now %i\n",i_trace);
+		return (0);
+	case ADDR_TRACE:
+		if (!redo) flush_to_newline ();
+		a_trace = a_trace^1;
+		prev_cmd = ADDR_TRACE;
+		printf("Addr_Trace is now %i\n",a_trace);
+		return (0);
+	case INST_DEBUG:
+		if (!redo) flush_to_newline ();
+		inst_debug = inst_debug^1;
+		prev_cmd = INST_DEBUG;
+		printf("Inst_Debug is now %i\n",inst_debug);
+		return (0);
     case READ_CMD:
       {
 	int token = (redo ? prev_token : read_token ());
@@ -456,7 +485,6 @@ parse_spim_command (bool redo)
       {
 	static mem_addr addr;
         bool continuable;
-
 	addr = (redo ? addr : get_opt_int ());
 	if (addr == 0)
 	  addr = starting_address ();
@@ -727,9 +755,8 @@ parse_spim_command (bool redo)
 
         prev_cmd = cmd;
         return (0);
-      }
-
-    default:
+      }		
+	default:
       while (read_token () != Y_NL) ;
       error ("Unknown spim command\n");
       return (0);
@@ -783,6 +810,12 @@ read_assembly_command ()
     return (DUMPNATIVE_TEXT_CMD);
   else if (str_prefix ((char *) yylval.p, "dump", 4))
     return (DUMP_TEXT_CMD);
+  else if (str_prefix ((char *) yylval.p, "inst_trace", 6))
+    return (INST_TRACE);
+  else if (str_prefix ((char *) yylval.p, "addr_trace", 1))
+    return (ADDR_TRACE);
+  else if (str_prefix ((char *) yylval.p, "inst_debug", 6))
+    return (INST_DEBUG);
   else if (*(char *) yylval.p == '?')
     return (HELP_CMD);
   else if (*(char *) yylval.p == '.')

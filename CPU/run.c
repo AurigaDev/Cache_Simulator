@@ -62,6 +62,8 @@
 #include "syscall.h"
 #include "run.h"
 
+extern bool started;
+
 bool force_break = false;	/* For the execution env. to force an execution break */
 
 #ifdef _MSC_BUILD
@@ -180,6 +182,19 @@ static int running_in_delay_slot = 0;
 
 
 
+void
+write_nopseudo_inst_read(char* inst_line, const char * filename)
+{
+	if(1){
+		FILE *fp;
+		fp=fopen(filename, "a+");
+		fprintf(fp,inst_line);
+		fprintf(fp,"\n");
+		fclose(fp);
+	}	
+}
+
+
 /* Run the program stored in memory, starting at address PC for
    STEPS_TO_RUN instruction executions.  If flag DISPLAY is true, print
    each instruction before it executes. Return true if program's
@@ -201,6 +216,8 @@ run_spim (mem_addr initial_PC, int steps_to_run, bool display)
 
   /* Start a timer running */
   start_CP0_timer();
+
+	started = 1;
 
   for (step_size = MIN (next_step, steps_to_run);
        steps_to_run > 0;
@@ -1642,7 +1659,7 @@ run_spim (mem_addr initial_PC, int steps_to_run, bool display)
 	    }
 	}			/* End: for (step = 0; ... */
     }				/* End: for ( ; steps_to_run > 0 ... */
-
+	
   /* Executed enought steps, return, but are able to continue. */
   return true;
 }

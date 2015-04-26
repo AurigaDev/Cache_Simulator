@@ -52,6 +52,8 @@
 #include "sym-tbl.h"
 #include "syscall.h"
 
+extern bool a_trace;
+extern bool started;
 
 #ifdef _WIN32
 /* Windows has an handler that is invoked when an invalid argument is passed to a system
@@ -65,6 +67,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <crtdbg.h>
+
+
 
 void myInvalidParameterHandler(const wchar_t* expression,
    const wchar_t* function, 
@@ -102,6 +106,16 @@ void windowsParameterHandlingControl(int flag )
 }
 #endif
 
+void
+write_text_file(mem_addr addr, const char * filename)
+{
+	if(a_trace && started){
+		FILE *fp;
+		fp=fopen(filename, "a+");
+		fprintf(fp,"w_%.8X\n",addr);
+		fclose(fp);
+	}	
+}
 
 /* Decides which syscall to execute or simulate.  Returns zero upon
    exit syscall and non-zero to continue execution. */
@@ -109,6 +123,10 @@ void windowsParameterHandlingControl(int flag )
 int
 do_syscall ()
 {
+	void * str_addr;
+	unsigned int curr_char;
+	int index = 0;
+	
 #ifdef _WIN32
     windowsParameterHandlingControl(0);
 #endif
@@ -136,7 +154,11 @@ do_syscall ()
       break;
 
     case PRINT_STRING_SYSCALL:
-      write_output (console_out, "%s", mem_reference (R[REG_A0]));
+      str_addr = mem_reference (R[REG_A0]);
+      index = 0;
+	  while((curr_char = read_mem_byte(R[REG_A0]+index), curr_char != 0 ))
+		index +=1;
+	  write_output (console_out, "%s", str_addr);
       break;
 
     case READ_INT_SYSCALL:
@@ -160,7 +182,6 @@ do_syscall ()
     case READ_DOUBLE_SYSCALL:
       {
 	static char str [256];
-
 	read_input (str, 256);
 	FPR [REG_FRES] = atof (str);
 	break;
@@ -169,6 +190,14 @@ do_syscall ()
     case READ_STRING_SYSCALL:
       {
 	read_input ( (char *) mem_reference (R[REG_A0]), R[REG_A1]);
+	index = 0;
+	curr_char = data_seg_b [R[REG_A0] - DATA_BOT];
+	write_text_file(R[REG_A0],"Atrace.txt");
+	while( curr_char != 0 ){
+		index +=1;
+		curr_char = data_seg_b [R[REG_A0] +index - DATA_BOT];
+		write_text_file(R[REG_A0] +index,"Atrace.txt");
+	}	
 	data_modified = true;
 	break;
       }
