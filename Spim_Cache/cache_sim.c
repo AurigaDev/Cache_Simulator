@@ -12,8 +12,42 @@
 #include <stdio.h>				// printf, file io, NULL
 #include <math.h> 				// log
 #include <stdlib.h> 			// srand, rand
+// menu operations
+#include <termios.h>
+#include <unistd.h>
 
+
+//########################################   Global Variable ##################################################
 FILE * qp;						// used in cache behavior output debugging
+
+
+//##################################   Linux Equivalent for Menu ##################################################
+// Source gotten from :: http://zobayer.blogspot.com/2010/12/getch-getche-in-gccg.html 
+/* reads from keypress, doesn't echo */
+int getch(void) {
+    struct termios oldattr, newattr;
+    int ch;
+    tcgetattr( STDIN_FILENO, &oldattr );
+    newattr = oldattr;
+    newattr.c_lflag &= ~( ICANON | ECHO );
+    tcsetattr( STDIN_FILENO, TCSANOW, &newattr );
+    ch = getchar();
+    tcsetattr( STDIN_FILENO, TCSANOW, &oldattr );
+    return ch;
+}
+
+/* reads from keypress, and echoes */
+int getche(void) {
+    struct termios oldattr, newattr;
+    int ch;
+    tcgetattr( STDIN_FILENO, &oldattr );
+    newattr = oldattr;
+    newattr.c_lflag &= ~( ICANON );
+    tcsetattr( STDIN_FILENO, TCSANOW, &newattr );
+    ch = getchar();
+    tcsetattr( STDIN_FILENO, TCSANOW, &oldattr );
+    return ch;
+}
 
 //######################################## Replacement Functions ##############################################
 void update_priority(unsigned int i, unsigned int start, unsigned int end,unsigned int replacement, int * priority){
@@ -212,6 +246,99 @@ int cache_access(int mem_addr,int * cache,int placement,int replacement,
 	}	
 }
 
+char * placement_map(int key){
+	switch(key){
+			case 0:
+				return "Direct Mapped";
+			case 1:
+				return "Fully Associative";
+			case 2:
+				return "N-Ways Associative";
+			default:
+				return "Unknown";
+		}
+}
+
+char * replacement_map(int key){
+	switch(key){
+			case 0:
+				return "MRU";
+			case 1:
+				return "LRU";
+			case 2:
+				return "Random";
+			default:
+				return "Unknown";
+		}
+}
+
+void print_menu( int *placement, int *replacement, int *no_blocks, int *set_size, int *line_size){
+	
+	
+	int choice=0,field =0;
+	while(choice!='6'){
+		char * plac_scheme, * replac_scheme;
+		  plac_scheme = placement_map(*placement);
+		replac_scheme = replacement_map(*replacement);
+		system("clear");
+		printf("\n\t SPIM CACHE SIMULATOR");
+		printf("\n\t------------------------------");
+		printf("\n\nPlacement Scheme %s, Replacement Scheme %s",plac_scheme, replac_scheme);
+		printf("\n\nNumber of Blocks %i, Number of Sets Per Block %i\nCache Line Size (in words) %i\n",*no_blocks, (int)pow(2,*set_size), *line_size);
+		printf("\n\n\t 1. Change Placement Scheme");
+		printf("\n\t 2. Change Relacement Scheme");
+		printf("\n\t 3. Change Number of Blocks");
+		printf("\n\t 4. Change Number of Sets Per Block");
+		printf("\n\t 5. Change Size of Cache Line(in words)");
+		printf("\n\t 6. Begin Simulation");
+		printf("\n\n Enter Your Choice: ");
+		choice = getche();
+		switch(choice){
+			case '1':
+			  printf("\n\nEnter an Integer to Change Placement Scheme. (0 for Direct Mapped, 1 for Fully Associative, or 2 for N-Ways Associative)\n");
+			  scanf("%d", &field);
+			  *placement = field;
+			  printf("\nPlacement Changed To %s\n",placement_map(field));
+			  (void)getch();
+			  break;
+			case '2':
+			  printf("\n\nEnter an Integer to Change Replacement Scheme. (0 for Most Recently Used, 1 for Least Recently Used, or 2 for Random)\n");
+			  scanf("%d", &field);
+			  *replacement = field;
+			  printf("\nRelacement Changed To %s\n",replacement_map(field));
+			  (void)getch();
+			  break;
+			case '3':
+			  printf("\n\nEnter an Integer to Change Number of Blocks. (Enter in a Power of 2: 1,2,4,8,16,32,64,128,256...)\n");
+			  scanf("%d", &field);
+			  *no_blocks = (int)pow(2,(int)(log(field)/log(2)));
+			  printf("\nNumber of Blocks changed to Changed To %i\n",*no_blocks);
+			  (void)getch();
+			  break;
+			case '4':
+			  printf("\n\nEnter an Integer to Change Number of Sets Per Block. (Enter in a Power of 2: 1,2,4,8,16,32,64,128,256...)\n");
+			  scanf("%d", &field);
+			  *set_size = (int)(log(field)/log(2));
+			  printf("\n Number of Sets Per Block changed to Changed To %i\n",(int)pow(2,*set_size));
+			  (void)getch();
+			  break;
+			case '5':
+			  printf("\n\nEnter an Integer to Change Size of Cache Line(in words). (Enter in a Power of 2: 1,2,4,8,16,32,64,128,256...)\n");
+			  scanf("%d", &field);
+			  *line_size = (int)pow(2,(int)(log(field)/log(2)));
+			  printf("\n Number of Words Per Block Changed To %i\n",*line_size);
+			  (void)getch();
+			  break;
+			case '6':
+			  printf("\n\nSimulation Ready...Hit Enter to Begin\n");
+			  break;
+			default:
+			  printf("\n\nINVALID SELECTION...Please try again\n");
+		}
+		(void)getch();
+	}
+}
+
 // Main
 
 int main(){
@@ -237,6 +364,7 @@ int main(){
 	Derived Size = (Line Size * 4) * (Number of Blocks) Bytes
 	*/ 	
 	
+		
 	// input parameters
 	int  placement = 2,			// 0 for direct, 1 for fully, 2 for N-ways
  	   replacement = 1,			// 0 for MRU, 1 for LRU, 2 for random
@@ -244,14 +372,24 @@ int main(){
 	      set_size = 1,			// 2^i number of sets each address can associate to
 		 line_size = 16;			// size of a line in cache
 	
+	print_menu(&placement, &replacement, &no_blocks, &set_size, &line_size);
+	
 	// embedded rules
 		if(placement == 0)
-			set_size = 0;	// 1 set per block in direct
+			if(set_size != 0){
+				set_size = 0;	// 1 set per block in direct
+				printf("\n Number of Sets Per Block changed to Changed To %i for Direct Mapping.\n",(int)pow(2,set_size));
+			}	
 		if(placement == 1)
-			set_size = (int)log(no_blocks)/log(2);	// every set per block in fully
+			if(set_size != (int)log(no_blocks)/log(2)){
+				set_size = (int)log(no_blocks)/log(2);	// every set per block in fully
+				printf("\n Number of Sets Per Block changed to Changed To %i for Full Associativity.\n",(int)pow(2,set_size));
+			}	
 		if(placement == 2)
-			if(pow(2,set_size) > no_blocks)
+			if(pow(2,set_size) > no_blocks){
 				set_size = (int)(log(no_blocks)/log(2));	// n sets pet blocks
+				printf("\n Number of Sets Per Block changed to Changed To %i for Max Associativity.\n",(int)pow(2,set_size));
+			}	
 	
 	// array of cache values, initialized to -1 signifying empty
 	int cache[no_blocks];
@@ -268,7 +406,8 @@ int main(){
 	int total=0;
 	int i;
 	
-	printf("no_blocks %i,set_size %i, line_size %i\n",no_blocks, (int)pow(2,set_size), line_size*4);
+	printf("\n\nPlacement Scheme %s, Replacement Scheme %s",placement_map(placement), replacement_map(replacement));
+	printf("\n\nNumber of Blocks %i, Number of Sets Per Block %i\nCache Line Size (in words) %i\n",no_blocks, (int)pow(2,set_size), line_size);
 	
 	for(i = 0; i < no_lines; i++)//for(i = 0; i < 15; i++)
 		total += cache_access(mem_accesses[i],cache, placement, replacement, no_blocks, set_size, line_size, cache_priority );
