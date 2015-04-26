@@ -204,3 +204,12 @@ I generally release new version of SPIM once a year, before a semester boundary 
 early January).  The new version are available on:
 
 		https://sourceforge.net/projects/spimsimulator/
+		
+		
+		
+                                        CACHE SIMULATOR
+                                      ===================
+                                      
+Cache Simulator utilizes modified SPIM revision 656 code to generate a list of memory address that are read from and written to during the couse of execution of Mips code through the Spim Simulator. Using this list of memory accesses, a cache enviroment is created with user input of cache specifications such as cache line size, number of sets, number of blocks, and algorithms for placing addresses in blocks and replacing addresses in blocks.
+
+
