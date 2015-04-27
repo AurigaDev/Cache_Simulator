@@ -205,8 +205,6 @@ early January).  The new version are available on:
 
 		https://sourceforge.net/projects/spimsimulator/
 		
-		
-		
                                         CACHE SIMULATOR
                                       ===================
                                       
