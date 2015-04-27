@@ -64,6 +64,9 @@ void update_priority(unsigned int i, unsigned int start, unsigned int end,unsign
 	}	
 	else if(replacement == 2)	//Random
 		return;	
+	else if(replacement == 3)	//Beladys
+		return;	
+		
 }
 
 int retrieve_priority(unsigned int start,unsigned int end,unsigned int replacement, int * priority){
@@ -82,7 +85,14 @@ int retrieve_priority(unsigned int start,unsigned int end,unsigned int replaceme
 	else if(replacement == 2){	// Random
 		int random_int = rand() % end;
 		return random_int;
+	}
+	else if(replacement == 2){	// Random
+		int random_int = rand() % end;
+		return random_int;
 	}	
+	else if(replacement == 3){	// Beladys
+		
+	}
 
 }
 
@@ -365,7 +375,7 @@ int main(){
 	*/ 	
 	
 		
-	// input parameters
+	// input parameters:: default settings
 	int  placement = 2,			// 0 for direct, 1 for fully, 2 for N-ways
  	   replacement = 1,			// 0 for MRU, 1 for LRU, 2 for random
 	     no_blocks = 16,		// number of containers for addresses
@@ -386,7 +396,7 @@ int main(){
 				printf("\n Number of Sets Per Block changed to Changed To %i for Full Associativity.\n",(int)pow(2,set_size));
 			}	
 		if(placement == 2)
-			if(pow(2,set_size) > no_blocks){
+			if((int)pow(2,set_size) > no_blocks){
 				set_size = (int)(log(no_blocks)/log(2));	// n sets pet blocks
 				printf("\n Number of Sets Per Block changed to Changed To %i for Max Associativity.\n",(int)pow(2,set_size));
 			}	

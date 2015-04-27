@@ -637,6 +637,12 @@ parse_spim_command (bool redo)
       write_output (message_out, "exit  -- Exit the simulator\n");
       write_output (message_out, "quit  -- Exit the simulator\n");
       write_output (message_out,
+		    "addr_trace -- Toggles logging of memory references to file Atrace.txt.\n");
+	  write_output (message_out,
+		    "inst_trace -- Toggles logging of instruction references to file Itrace.txt.\n");
+	  write_output (message_out,
+		    "inst_debug -- Toggles logging of instruction references to file Atrace.txt per memory refrence.\n");
+	  write_output (message_out,
 		    "read \"FILE\" -- Read FILE containing assembly code into memory\n");
       write_output (message_out,
 		    "load \"FILE\" -- Same as read\n");
