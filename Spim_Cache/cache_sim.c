@@ -12,6 +12,7 @@
 #include <stdio.h>				// printf, file io, NULL
 #include <math.h> 				// log
 #include <stdlib.h> 			// srand, rand
+
 // menu operations
 #include <termios.h>
 #include <unistd.h>
@@ -351,17 +352,28 @@ void print_menu( int *placement, int *replacement, int *no_blocks, int *set_size
 
 // Main
 
-int main(){
+int main( int argc, char *argv[] ){
 	srand(SEED);
 	qp =fopen("cache_bahavior.txt", "w");
-	// number of memory accesses		
-	unsigned int no_lines = file_line_number("../spim/Atrace.txt");
+	printf("Number of Arguments: %i",argc);
+	unsigned int no_lines;
+	int *mem_accesses;
+	mem_accesses=(int *) malloc(1*sizeof(int));
+	if ( argc != 2 ) /* argc should be 2 for correct execution */
+    {
 	
-	// array of all memory access to traverse through	
-	int mem_accesses [no_lines];
-
-	// parse Atrace.txt for all memory accesses read and write
-	fill_mem_accesses(FILENAME, mem_accesses);
+		// number of memory accesses		
+		no_lines = file_line_number("../spim/Atrace.txt");
+		
+		// array of all memory access to traverse through	
+		free(mem_accesses);
+		mem_accesses = (int *) malloc(no_lines*sizeof(int));
+	
+		// parse Atrace.txt for all memory accesses read and write
+		fill_mem_accesses(FILENAME, mem_accesses);		
+    }
+	
+	
 	
 	/*
 	Input Parameters
@@ -381,7 +393,7 @@ int main(){
 	     no_blocks = 16,		// number of containers for addresses
 	      set_size = 1,			// 2^i number of sets each address can associate to
 		 line_size = 16;			// size of a line in cache
-	
+		 
 	print_menu(&placement, &replacement, &no_blocks, &set_size, &line_size);
 	
 	// embedded rules
@@ -405,7 +417,7 @@ int main(){
 	int cache[no_blocks];
 	// array of cache related values such as MRU or LRU
 	int cache_priority[no_blocks+1];
-	
+
 	int j;
 	for (j = 0; j < no_blocks; ++j)
 		 cache[j] = -1;
@@ -414,13 +426,36 @@ int main(){
 		 cache_priority[j] = 0;
 	
 	int total=0;
-	int i;
+	int i=0;
 	
-	printf("\n\nPlacement Scheme %s, Replacement Scheme %s",placement_map(placement), replacement_map(replacement));
-	printf("\n\nNumber of Blocks %i, Number of Sets Per Block %i\nCache Line Size (in words) %i\n",no_blocks, (int)pow(2,set_size), line_size);
-	
-	for(i = 0; i < no_lines; i++)//for(i = 0; i < 15; i++)
-		total += cache_access(mem_accesses[i],cache, placement, replacement, no_blocks, set_size, line_size, cache_priority );
+	if ( argc != 2 ) 
+		for(i = 0; i < no_lines; i++)//for(i = 0; i < 15; i++)
+			total += cache_access(mem_accesses[i],cache, placement, replacement, no_blocks, set_size, line_size, cache_priority );
+	else{
+		printf("READING FROM STANDARD IN: \n");
+		int addr;		// int representation of an address
+		char * line;	// data structure to save current string
+		size_t size;
+		//parse input file and strip integer representation of addresses
+		int errorno = getline(&line, &size, stdin);
+			while (strcmp(line,"exit\n")){
+				if (errorno){
+					i++;
+					int c = 0;
+					char trim_addr[80];
+					while (c < 8) {
+						trim_addr[c] = line[c+2];
+						c++;
+					}
+					trim_addr[c] = '\0';
+					sscanf(trim_addr, "%x", &addr);
+					int hitmiss = cache_access(addr,cache, placement, replacement, no_blocks, set_size, line_size, cache_priority );
+					printf("%s", (hitmiss == 1)?"Cache Access Hit!\n":"Cache Access Miss!\n");
+					total += hitmiss;
+					int errorno = getline(&line, &size, stdin);
+				}
+		}
+	}
 	printf("Cache Accesses: %i\nCache Hits: %i\nCache Misses: %i\nCache Hit Rate: %.2f%%\n",i,total,i-total,(double)total/i *100);
 	fclose(qp);
 	return 0;

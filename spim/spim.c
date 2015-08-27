@@ -79,6 +79,7 @@
 #include "scanner.h"
 #include "parser_yacc.h"
 #include "data.h"
+#include <unistd.h>				// execp
 
 
 /* Internal functions: */
@@ -123,6 +124,11 @@ bool started = 0;
 bool i_trace = 0;
 bool a_trace = 0;
 bool inst_debug = 0;
+bool cache_set = 0;
+
+FILE * CSim;
+bool C_begin;
+
 /* Local variables: */
 
 /* => load standard exception handler */
@@ -426,7 +432,8 @@ enum {
   DELETE_BKPT_CMD,
   LIST_BKPT_CMD,
   DUMPNATIVE_TEXT_CMD,
-  DUMP_TEXT_CMD
+  DUMP_TEXT_CMD,
+  START_CACHE
 };
 
 
@@ -465,6 +472,27 @@ parse_spim_command (bool redo)
 		prev_cmd = INST_DEBUG;
 		printf("Inst_Debug is now %i\n",inst_debug);
 		return (0);
+	case START_CACHE:
+		if (!redo) flush_to_newline ();
+		prev_cmd = START_CACHE;
+		printf("Spim simulation starting...\n");
+		if(!C_begin){
+			//execl("./../Spim_Cache/spim_cache","", (char*)NULL);
+			cache_set = 1;
+			int fd[2]; //set up pipeline
+			pipe(fd);
+			
+			//fork child process to start cache simulator
+			pid_t c_pid = fork();
+			if(c_pid == 0){
+				execl("/usr/bin/xterm", "xterm", "-e", "./../Spim_Cache/spim_cache -p", NULL);
+				close(fd[0]); // close input side
+			}
+			else	
+				close(fd[1]); //close output side
+		}
+		C_begin=1;	
+		return (0);  	
     case READ_CMD:
       {
 	int token = (redo ? prev_token : read_token ());
@@ -640,6 +668,8 @@ parse_spim_command (bool redo)
 		    "addr_trace -- Toggles logging of memory references to file Atrace.txt.\n");
 	  write_output (message_out,
 		    "inst_trace -- Toggles logging of instruction references to file Itrace.txt.\n");
+	  write_output (message_out,
+		    "start_cache -- Executes Cache Simulator to begin simulation.\n");		
 	  write_output (message_out,
 		    "inst_debug -- Toggles logging of instruction references to file Atrace.txt per memory refrence.\n");
 	  write_output (message_out,
@@ -822,6 +852,8 @@ read_assembly_command ()
     return (ADDR_TRACE);
   else if (str_prefix ((char *) yylval.p, "inst_debug", 6))
     return (INST_DEBUG);
+  else if (str_prefix ((char *) yylval.p, "start_cache", 1))
+    return (START_CACHE);
   else if (*(char *) yylval.p == '?')
     return (HELP_CMD);
   else if (*(char *) yylval.p == '.')
