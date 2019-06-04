@@ -1,4 +1,9 @@
 # Cache_Simulator
+Spim_Cache/
+
+Mips simulator that includes cache simulator, used for compiler course optimization performance. Penultimate compiler course with correct assembly to be evaluated against optimized to minimize memory access, strongest indicator of timing performance.
+
+# Orignal_Readme
                         README FILE FOR SPIM, XSPIM, PCSPIM, and QTSPIM 
                         ===============================================
 
